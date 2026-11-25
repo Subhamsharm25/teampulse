@@ -1,0 +1,57 @@
+# Single-replica deployment (SQLite is one file on one volume, so exactly one writer).
+# kubectl create secret generic teampulse --from-literal=TEAMPULSE_SECRET_KEY=$(python -c "import secrets;print(secrets.token_urlsafe(32))")
+# kubectl apply -f deploy/kubernetes.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata: { name: teampulse }
+data:
+  TEAMPULSE_COMPANY: "Acme Labs"
+  TEAMPULSE_TZ: "Asia/Kolkata"
+  TEAMPULSE_WORKDAYS: "0,1,2,3,4"
+  TEAMPULSE_DB: "/data/teampulse.db"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: { name: teampulse-data }
+spec:
+  accessModes: [ReadWriteOnce]
+  resources: { requests: { storage: 1Gi } }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: teampulse, labels: { app: teampulse } }
+spec:
+  replicas: 1
+  strategy: { type: Recreate }   # never two writers on the same SQLite file
+  selector: { matchLabels: { app: teampulse } }
+  template:
+    metadata: { labels: { app: teampulse } }
+    spec:
+      securityContext: { runAsNonRoot: true, runAsUser: 10001, fsGroup: 10001, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: teampulse
+          image: teampulse:local
+          imagePullPolicy: IfNotPresent
+          ports: [{ name: http, containerPort: 8000 }]
+          envFrom:
+            - configMapRef: { name: teampulse }
+            - secretRef: { name: teampulse }
+          readinessProbe: { httpGet: { path: /healthz, port: http }, periodSeconds: 5 }
+          livenessProbe: { httpGet: { path: /healthz, port: http }, periodSeconds: 15 }
+          resources: { requests: { cpu: 20m, memory: 64Mi }, limits: { cpu: 500m, memory: 256Mi } }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+          volumeMounts:
+            - { name: data, mountPath: /data }
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: teampulse-data }
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata: { name: teampulse }
+spec:
+  selector: { app: teampulse }
+  ports: [{ name: http, port: 80, targetPort: http }]

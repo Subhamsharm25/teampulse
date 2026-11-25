@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "TeamPulse: daily hours, attendance and utilization dashboard for small teams"
+type: software
+version: 0.1.0
+date-released: 2026-11-25
+license: MIT
+repository-code: "https://github.com/Subhamsharm25/teampulse"
+keywords: [time-tracking, attendance, workforce-analytics, fastapi, sqlite, startup]
+authors:
+  - family-names: "Sharma"
+    given-names: "Subham"

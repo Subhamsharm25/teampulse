@@ -1,0 +1,23 @@
+# One command to run TeamPulse with a persistent database.
+#   cp .env.example .env   # set TEAMPULSE_SECRET_KEY and your company name
+#   docker compose up -d --build
+#   docker compose run --rm teampulse seed-demo                                (optional demo data)
+#   docker compose run --rm -e TEAMPULSE_ADMIN_PASSWORD=... teampulse create-admin --name "You" --email you@company.com
+name: teampulse
+
+services:
+  teampulse:
+    build: .
+    image: teampulse:local
+    ports: ["8000:8000"]
+    env_file: [{ path: .env, required: false }]
+    environment:
+      TEAMPULSE_DB: /data/teampulse.db
+    volumes: ["teampulse-data:/data"]
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { memory: 256m }
+
+volumes:
+  teampulse-data:

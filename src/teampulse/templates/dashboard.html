@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="pagehead">
+  <div>
+    <h1>{{ 'Today' if is_today else day.strftime('%A') }}, {{ day.strftime('%d %b %Y') }}</h1>
+    <p class="muted">Who is working, who is not, and how the hours add up.</p>
+  </div>
+  <form class="filters" method="get">
+    <a class="btn" href="/?day={{ prev }}{{ '&team=' ~ team if team }}">‹</a>
+    <input type="date" name="day" value="{{ day }}" onchange="this.form.submit()">
+    {% if not is_today %}<a class="btn" href="/?day={{ next }}{{ '&team=' ~ team if team }}">›</a>{% endif %}
+    <select name="team" onchange="this.form.submit()">
+      <option value="">All teams</option>
+      {% for t in teams %}<option {{ 'selected' if t == team }}>{{ t }}</option>{% endfor %}
+    </select>
+  </form>
+</div>
+
+<section class="kpis">
+  <div class="kpi"><span>Team</span><strong>{{ dash.headcount }}</strong><em>active people</em></div>
+  <div class="kpi green"><span>Working now</span><strong>{{ dash.working_now }}</strong><em>clocked in</em></div>
+  <div class="kpi"><span>Present</span><strong>{{ dash.present }}</strong><em>worked today</em></div>
+  <div class="kpi red"><span>{{ 'Not in' if is_today else 'Absent' }}</span><strong>{{ dash.absent }}</strong><em>{{ dash.on_leave }} on leave</em></div>
+  <div class="kpi"><span>Hours worked</span><strong>{{ dash.worked_h | hours }}</strong><em>of {{ dash.expected_h | hours }} expected</em></div>
+  <div class="kpi amber"><span>Hours not worked</span><strong>{{ dash.not_worked_h | hours }}</strong><em>utilization {{ dash.utilization | pct }}</em></div>
+</section>
+
+<section class="card">
+  <div class="cardhead"><h2>Last 14 days</h2><span class="muted">team hours worked vs expected</span></div>
+  <canvas id="trend" height="90" aria-label="Team hours worked versus expected over the last 14 days"></canvas>
+</section>
+
+<section class="card">
+  <div class="cardhead"><h2>People</h2><span class="muted">sorted by status</span></div>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>Name</th><th>Team</th><th>Status</th><th>In</th><th>Out</th>
+      <th class="num">Worked</th><th class="num">Not worked</th><th>Utilization</th></tr></thead>
+    <tbody>
+    {% for r in dash.rows %}
+      <tr>
+        <td><a href="/employees/{{ r.employee.id }}">{{ r.employee.name }}</a></td>
+        <td>{{ r.employee.team }}</td>
+        <td><span class="badge {{ r.today.status }}">{{ r.today.status | status }}</span></td>
+        <td>{{ r.today.first_in | clock }}</td>
+        <td>{{ 'now' if r.today.working_now else r.today.last_out | clock }}</td>
+        <td class="num">{{ r.today.worked_h | hours }}</td>
+        <td class="num">{{ r.today.not_worked_h | hours }}</td>
+        <td>
+          {% set u = r.today.utilization %}
+          <div class="bar" title="{{ u | pct }}"><i style="width: {{ [((u or 0) * 100), 100] | min }}%" class="{{ 'over' if r.today.status == 'overtime' }}"></i></div>
+          <small>{{ u | pct }}</small>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="8" class="muted">No active people yet. Add them on the People page.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="/static/dashboard.js?v={{ version }}"></script>
+{% endblock %}

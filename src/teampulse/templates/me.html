@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}My time{% endblock %}
+{% block content %}
+<div class="pagehead">
+  <div><h1>Hi {{ user.name.split(' ')[0] }}</h1><p class="muted">Your hours today and this week.</p></div>
+</div>
+
+<section class="clockcard card {{ 'on' if open_session }}">
+  <div>
+    <span class="muted">{{ 'Clocked in since' if open_session else 'You are clocked out' }}</span>
+    <strong class="bigtime">{{ open_session.start | clock if open_session else today.worked_h | hours }}</strong>
+    <span class="muted">{{ 'worked so far today: ' ~ (today.worked_h | hours) if open_session else 'worked today' }}</span>
+  </div>
+  <form method="post" action="/me/clock">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button class="{{ 'danger' if open_session else 'primary' }} huge">{{ 'Clock out' if open_session else 'Clock in' }}</button>
+  </form>
+</section>
+
+<section class="kpis">
+  <div class="kpi"><span>This week</span><strong>{{ week.worked_h | hours }}</strong><em>of {{ week.expected_h | hours }} expected</em></div>
+  <div class="kpi amber"><span>Not worked</span><strong>{{ week.not_worked_h | hours }}</strong><em>this week</em></div>
+  <div class="kpi green"><span>Overtime</span><strong>{{ week.overtime_h | hours }}</strong><em>this week</em></div>
+  <div class="kpi"><span>Utilization</span><strong>{{ week.utilization | pct }}</strong><em>{{ week.days_present }} day(s) present</em></div>
+</section>
+
+<div class="grid2">
+<section class="card">
+  <h2>This week</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Day</th><th>Status</th><th class="num">Worked</th><th class="num">Expected</th></tr></thead>
+    <tbody>
+    {% for d in week.days %}
+      <tr><td>{{ d.day.strftime('%a %d %b') }}</td><td><span class="badge {{ d.status }}">{{ d.status | status }}</span></td>
+          <td class="num">{{ d.worked_h | hours }}</td><td class="num">{{ d.expected_h | hours }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+<section class="card">
+  <h2>Recent entries</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Date</th><th>In</th><th>Out</th><th>Note</th></tr></thead>
+    <tbody>
+    {% for s in sessions %}
+      <tr><td>{{ s.start.strftime('%d %b') }}</td><td>{{ s.start | clock }}</td><td>{{ s.end | clock if s.end else 'now' }}</td><td class="muted">{{ s.note }}</td></tr>
+    {% else %}
+      <tr><td colspan="4" class="muted">No entries yet. Clock in to start.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+</div>
+{% endblock %}

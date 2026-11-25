@@ -1,0 +1,12 @@
+.git
+.github
+.venv
+**/__pycache__
+data
+*.db
+tests
+reports
+.trivy-cache
+.env
+deploy
+.claude

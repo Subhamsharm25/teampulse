@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+<div class="pagehead">
+  <div><h1>Hours report</h1><p class="muted">{{ start.strftime('%d %b %Y') }} – {{ end.strftime('%d %b %Y') }}</p></div>
+  <form class="filters" method="get">
+    <input type="date" name="start" value="{{ start }}"> <span class="muted">to</span>
+    <input type="date" name="end" value="{{ end }}">
+    <button class="btn">Show</button>
+    <a class="btn primary" href="/reports.csv?start={{ start }}&end={{ end }}">Download CSV</a>
+  </form>
+</div>
+
+<section class="kpis">
+  <div class="kpi"><span>Worked</span><strong>{{ totals.worked_h | hours }}</strong><em>whole team</em></div>
+  <div class="kpi"><span>Expected</span><strong>{{ totals.expected_h | hours }}</strong><em>work days, minus leave</em></div>
+  <div class="kpi amber"><span>Not worked</span><strong>{{ totals.not_worked_h | hours }}</strong>
+    <em>{{ ((totals.worked_h / totals.expected_h) if totals.expected_h else none) | pct }} utilization</em></div>
+</section>
+
+<section class="card">
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>Name</th><th>Team</th><th class="num">Worked</th><th class="num">Expected</th><th class="num">Not worked</th>
+      <th class="num">Overtime</th><th>Utilization</th><th class="num">Present</th><th class="num">Absent</th><th class="num">Leave</th></tr></thead>
+    <tbody>
+    {% for e, p in rows %}
+      <tr>
+        <td><a href="/employees/{{ e.id }}">{{ e.name }}</a></td><td>{{ e.team }}</td>
+        <td class="num">{{ p.worked_h | hours }}</td><td class="num">{{ p.expected_h | hours }}</td>
+        <td class="num">{{ p.not_worked_h | hours }}</td><td class="num">{{ p.overtime_h | hours }}</td>
+        <td><div class="bar"><i style="width: {{ [((p.utilization or 0) * 100), 100] | min }}%" class="{{ 'over' if p.utilization and p.utilization > 1 }}"></i></div><small>{{ p.utilization | pct }}</small></td>
+        <td class="num">{{ p.days_present }}</td><td class="num {{ 'warn' if p.days_absent }}">{{ p.days_absent }}</td><td class="num">{{ p.days_leave }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endblock %}

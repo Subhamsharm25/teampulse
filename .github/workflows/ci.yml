@@ -1,0 +1,36 @@
+# Same stages as the Jenkinsfile: every job calls ci.py.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -e ".[dev]"
+      - run: python ci.py lint unit
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: test-report, path: reports/ }
+
+  container:
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      K3D_CLUSTER: ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Install k3d
+        run: curl -sfL https://raw.githubusercontent.com/k3d-io/k3d/v5.9.0/install.sh | TAG=v5.9.0 bash
+      - run: python ci.py build scan smoke k8s
